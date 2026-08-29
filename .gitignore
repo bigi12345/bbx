@@ -3,3 +3,5 @@ data/
 uploads/
 *.log
 .DS_Store
+.deploy-token
+.selftest-data/
