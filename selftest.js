@@ -1,16 +1,24 @@
 /* BB星打卡系统 - 端到端功能自查脚本（node 18+，直接运行） */
-const BASE = "http://localhost:3000";
+const BASE = process.env.BASE || "http://localhost:3000";
 let pass = 0, fail = 0;
 function check(name, cond, extra) {
   if (cond) { pass++; console.log("  ✅ " + name); }
   else { fail++; console.log("  ❌ " + name + (extra ? " → " + JSON.stringify(extra).slice(0, 200) : "")); }
 }
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function req(method, path, data, token) {
   const headers = { "Content-Type": "application/json" };
   if (token) headers["Authorization"] = "Bearer " + token;
-  const r = await fetch(BASE + path, { method, headers, body: data ? JSON.stringify(data) : undefined });
-  let j = null; try { j = await r.json(); } catch (e) {}
-  return { status: r.status, data: j };
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      if (i > 0) { await sleep(1200); console.log("    ↻ 重试 " + path); }
+      const r = await fetch(BASE + path, { method, headers, body: data ? JSON.stringify(data) : undefined });
+      let j = null; try { j = await r.json(); } catch (e) {}
+      return { status: r.status, data: j };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
 }
 const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
