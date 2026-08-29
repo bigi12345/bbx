@@ -48,7 +48,7 @@ const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfF
   check("家长登录成功", login.status === 200);
   const pt = reg.data.token;
   const fc = reg.data.parent.familyCode;
-  check("生成6位家庭码", /^\d{6}$/.test(fc));
+  check("生成4位家庭码", /^\d{4}$/.test(fc));
   const noAuth = await req("GET", "/api/parent/children");
   check("未登录访问家长接口被拦截(401)", noAuth.status === 401);
 
