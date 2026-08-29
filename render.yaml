@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: bbstar-checkin
+    runtime: node
+    plan: free
+    buildCommand: echo "零依赖，无需构建"
+    startCommand: node server.js
+    healthCheckPath: /api/ping
+    envVars:
+      - key: PORT
+        value: 3000
+      # 可选：接入真实AI判题（OpenAI兼容视觉接口），不配置则使用内置演示识别
+      - key: AI_API_URL
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false
