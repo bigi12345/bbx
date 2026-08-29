@@ -209,7 +209,7 @@ function checkQuality(dataUrl) {
     const r = await window.Api.get("/child/home");
     if (r.status === 200) return renderChildHome(r.data);
   }
-  renderAuth("login");
+  renderAuth("kid");
 })();
 
 function modeBadge() {
@@ -220,41 +220,22 @@ function modeBadge() {
 function renderAuth(tab) {
   clearTimers();
   state.view = "auth";
-  const t = tab || "login";
+  const t = tab || "kid";
   $app.innerHTML =
     '<div class="auth-wrap"><div class="big-logo">⭐</div><div class="big-title">BB星 · 每日作业打卡</div>' +
     '<div class="tabs">' +
+    '<div class="tab ' + (t === "kid" ? "active" : "") + '" data-t="kid">孩子登录</div>' +
     '<div class="tab ' + (t === "login" ? "active" : "") + '" data-t="login">家长登录</div>' +
-    '<div class="tab ' + (t === "reg" ? "active" : "") + '" data-t="reg">家长注册</div>' +
-    '<div class="tab ' + (t === "kid" ? "active" : "") + '" data-t="kid">孩子登录</div></div>' +
+    '</div>' +
     '<div class="card" id="auth-body"></div>' +
     '<div class="muted" style="text-align:center;margin-top:14px">' + modeBadge() + " · 手机/平板/电脑均可使用</div></div>";
   $app.querySelectorAll(".tab").forEach(x => x.onclick = () => renderAuth(x.dataset.t));
   const body = $app.querySelector("#auth-body");
 
-  if (t === "login" || t === "reg") {
-    const isReg = t === "reg";
+  if (t === "kid") {
+    const savedCode = localStorage.getItem("bbstar_saved_family") || "";
     body.innerHTML =
-      '<div class="form-item"><label>' + (isReg ? "设置用户名" : "用户名") + '</label><input type="text" id="a-user" placeholder="家长用户名" autocomplete="username"></div>' +
-      '<div class="form-item"><label>密码</label><input type="password" id="a-pass" placeholder="至少4位" autocomplete="' + (isReg ? "new-password" : "current-password") + '"></div>' +
-      (isReg ? '<div class="muted" style="margin-bottom:12px">📌 仅家长可注册主账号，注册后可为孩子创建账号（最多5个）</div>' : "") +
-      '<button class="btn" id="a-go" style="width:100%">' + (isReg ? "注册并登录" : "登录") + "</button>";
-    body.querySelector("#a-go").onclick = async () => {
-      const u = body.querySelector("#a-user").value.trim(), p = body.querySelector("#a-pass").value;
-      if (!u || !p) return toast("请填写用户名和密码");
-      const r = await window.Api.post(isReg ? "/register" : "/login", { username: u, password: p });
-      if (r.status !== 200) return toast(r.data.error || "操作失败");
-      window.Api.setToken(r.data.token);
-      localStorage.setItem("bbstar_role", "parent");
-      localStorage.setItem("bbstar_parent", JSON.stringify(r.data.parent));
-      state.parentInfo = r.data.parent;
-      toast(isReg ? "注册成功！请创建孩子账号 🎉" : "欢迎回来 👋");
-      const rc = await window.Api.get("/parent/children");
-      renderParentHome(rc.data.children || []);
-    };
-  } else {
-    body.innerHTML =
-      '<div class="form-item"><label>家庭码（家长端首页可查看）</label><input type="text" id="k-code" inputmode="numeric" placeholder="6位数字"></div>' +
+      '<div class="form-item"><label>家庭码（家长端首页可查看）</label><input type="text" id="k-code" inputmode="numeric" maxlength="4" placeholder="4位数字" value="' + esc(savedCode) + '"></div>' +
       '<div id="k-body"><button class="btn" id="k-go" style="width:100%">下一步</button></div>' +
       '<div class="muted" style="margin-top:12px">🔐 孩子使用九宫格手势密码登录；忘记密码请家长在工作台重置</div>';
     body.querySelector("#k-go").onclick = async () => {
@@ -262,6 +243,7 @@ function renderAuth(tab) {
       if (!code) return toast("请输入家庭码");
       const r = await window.Api.get("/family/" + encodeURIComponent(code));
       if (r.status !== 200) return toast(r.data.error || "家庭码不正确");
+      localStorage.setItem("bbstar_saved_family", code);
       if (!r.data.children.length) return toast("该家庭还没有孩子账号，请家长先创建");
       const kb = body.querySelector("#k-body");
       kb.innerHTML = '<div class="muted">请选择你是谁 👇</div><div class="kid-list">' +
@@ -276,6 +258,7 @@ function renderAuth(tab) {
             if (rl.status !== 200) { toast(rl.data.error || "手势密码不正确，再试试"); return; }
             window.Api.setToken(rl.data.token);
             localStorage.setItem("bbstar_role", "child");
+            localStorage.setItem("bbstar_saved_family", code);
             state.childInfo = rl.data.child;
             toast("欢迎 " + rl.data.child.name + "！🌟");
             const rh = await window.Api.get("/child/home");
@@ -285,6 +268,50 @@ function renderAuth(tab) {
           kb.querySelector("#k-forgot").onclick = () => toast("请爸爸妈妈在家长工作台为你重置手势密码哦 😊");
         };
       });
+    };
+  } else if (t === "login") {
+    const savedUser = localStorage.getItem("bbstar_saved_user") || "";
+    body.innerHTML =
+      '<div class="form-item"><label>用户名</label><input type="text" id="a-user" placeholder="家长用户名" autocomplete="username" value="' + esc(savedUser) + '"></div>' +
+      '<div class="form-item"><label>密码</label><input type="password" id="a-pass" placeholder="至少4位" autocomplete="current-password"></div>' +
+      '<button class="btn" id="a-go" style="width:100%">登录</button>' +
+      '<button class="btn ghost" id="a-reg" style="width:100%;margin-top:10px">还没有账号？注册家长账号</button>';
+    body.querySelector("#a-go").onclick = async () => {
+      const u = body.querySelector("#a-user").value.trim(), p = body.querySelector("#a-pass").value;
+      if (!u || !p) return toast("请填写用户名和密码");
+      const r = await window.Api.post("/login", { username: u, password: p });
+      if (r.status !== 200) return toast(r.data.error || "操作失败");
+      window.Api.setToken(r.data.token);
+      localStorage.setItem("bbstar_role", "parent");
+      localStorage.setItem("bbstar_saved_user", u);
+      localStorage.setItem("bbstar_parent", JSON.stringify(r.data.parent));
+      state.parentInfo = r.data.parent;
+      toast("欢迎回来 👋");
+      const rc = await window.Api.get("/parent/children");
+      renderParentHome(rc.data.children || []);
+    };
+    body.querySelector("#a-reg").onclick = () => renderAuth("reg");
+  } else { // t === "reg"：注册作为登录下方的按钮入口
+    body.innerHTML =
+      '<div class="muted" id="a-back" style="margin-bottom:10px;cursor:pointer">‹ 返回登录</div>' +
+      '<div class="form-item"><label>设置用户名</label><input type="text" id="a-user" placeholder="家长用户名" autocomplete="username"></div>' +
+      '<div class="form-item"><label>密码</label><input type="password" id="a-pass" placeholder="至少4位" autocomplete="new-password"></div>' +
+      '<div class="muted" style="margin-bottom:12px">📌 仅家长可注册主账号，注册后可为孩子创建账号（最多5个）</div>' +
+      '<button class="btn" id="a-go" style="width:100%">注册并登录</button>';
+    body.querySelector("#a-back").onclick = () => renderAuth("login");
+    body.querySelector("#a-go").onclick = async () => {
+      const u = body.querySelector("#a-user").value.trim(), p = body.querySelector("#a-pass").value;
+      if (!u || !p) return toast("请填写用户名和密码");
+      const r = await window.Api.post("/register", { username: u, password: p });
+      if (r.status !== 200) return toast(r.data.error || "操作失败");
+      window.Api.setToken(r.data.token);
+      localStorage.setItem("bbstar_role", "parent");
+      localStorage.setItem("bbstar_saved_user", u);
+      localStorage.setItem("bbstar_parent", JSON.stringify(r.data.parent));
+      state.parentInfo = r.data.parent;
+      toast("注册成功！请创建孩子账号 🎉");
+      const rc = await window.Api.get("/parent/children");
+      renderParentHome(rc.data.children || []);
     };
   }
 }
