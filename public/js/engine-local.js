@@ -105,7 +105,7 @@ function handle(method, path, data, token) {
     if (!u || u.length < 2) return err(400, "用户名至少2个字符");
     if (!data.password || String(data.password).length < 4) return err(400, "密码至少4位");
     if (DB.parents.some(function (x) { return x.username === u; })) return err(400, "该用户名已被注册");
-    var par = { id: BB.uid("p"), username: u, passHash: BB.simpleHash("pw::" + data.password), familyCode: String(Math.floor(100000 + Math.random() * 900000)), children: [], createdAt: new Date().toISOString() };
+    var par = { id: BB.uid("p"), username: u, passHash: BB.simpleHash("pw::" + data.password), familyCode: String(Math.floor(1000 + Math.random() * 9000)), children: [], createdAt: new Date().toISOString() };
     DB.parents.push(par); save();
     return ok({ token: tokenFor("parent", par.id), parent: { id: par.id, username: par.username, familyCode: par.familyCode } });
   }
