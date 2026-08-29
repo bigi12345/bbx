@@ -228,7 +228,7 @@ route("POST", "/api/register", async (ctx) => {
   if (!username || String(username).trim().length < 2) return json(ctx.res, 400, { error: "用户名至少2个字符" });
   if (!password || String(password).length < 4) return json(ctx.res, 400, { error: "密码至少4位" });
   if (DB.parents.some(p => p.username === username.trim())) return json(ctx.res, 400, { error: "该用户名已被注册" });
-  const familyCode = String(Math.floor(100000 + Math.random() * 900000));
+  const familyCode = String(Math.floor(1000 + Math.random() * 9000));
   const parent = { id: BB.uid("p"), username: username.trim(), passHash: BB.simpleHash("pw::" + password), familyCode, children: [], createdAt: new Date().toISOString() };
   DB.parents.push(parent); saveDB();
   json(ctx.res, 200, { token: mkSession("parent", parent.id), parent: { id: parent.id, username: parent.username, familyCode } });
